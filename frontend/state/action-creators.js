@@ -1,39 +1,111 @@
 // ❗ You don't need to add extra action creators to achieve MVP
-export function moveClockwise() { }
 
-export function moveCounterClockwise() { }
+import * as actionTypes from "../state/action-types.js";
+import axios from "axios";
 
-export function selectAnswer() { }
+export function moveClockwise() {
+  return {
+    type: actionTypes.MOVE_CLOCKWISE,
+  };
+}
 
-export function setMessage() { }
+export function moveCounterClockwise() {
+  return {
+    type: actionTypes.MOVE_COUNTERCLOCKWISE,
+  };
+}
 
-export function setQuiz() { }
+export function selectAnswer(answer_id) {
+  return {
+    type: actionTypes.SET_SELECTED_ANSWER,
+    payload: answer_id,
+  };
+}
+export function setMessage(message) {
+  return {
+    type: actionTypes.SET_INFO_MESSAGE,
+    payload: message,
+  };
+}
+export function setQuiz() {}
 
-export function inputChange() { }
+export function inputChange(name, value) {
+  return {
+    type: actionTypes.INPUT_CHANGE,
+    payload: { name, value },
+  };
+}
 
-export function resetForm() { }
+export function resetForm() {
+  return {
+    type: actionTypes.RESET_FORM,
+  };
+}
 
 // ❗ Async action creators
 export function fetchQuiz() {
   return function (dispatch) {
-    // First, dispatch an action to reset the quiz state (so the "Loading next quiz..." message can display)
-    // On successful GET:
-    // - Dispatch an action to send the obtained quiz to its state
-  }
+    axios
+      .get("http://localhost:9000/api/quiz/next")
+      .then((response) => {
+        dispatch({
+          type: actionTypes.SET_QUIZ_INTO_STATE,
+          payload: response.data,
+        });
+      })
+      .catch((error) => {
+        dispatch({
+          type: actionTypes.SET_INFO_MESSAGE,
+          payload: error.message,
+        });
+      });
+  };
 }
-export function postAnswer() {
+
+export function postAnswer(answer) {
   return function (dispatch) {
-    // On successful POST:
-    // - Dispatch an action to reset the selected answer state
-    // - Dispatch an action to set the server message to state
-    // - Dispatch the fetching of the next quiz
-  }
+    axios
+      .post("http://localhost:9000/api/quiz/answer", answer)
+      .then((response) => {
+        dispatch({ type: actionTypes.SET_SELECTED_ANSWER, payload: null });
+
+        const messageFromApi = response.data.message;
+        dispatch(setMessage(messageFromApi));
+
+        dispatch(fetchQuiz());
+      })
+      .catch((error) => {
+        dispatch(setMessage(error.message));
+      });
+  };
 }
-export function postQuiz() {
+
+export function postQuiz(quiz) {
   return function (dispatch) {
-    // On successful POST:
-    // - Dispatch the correct message to the the appropriate state
-    // - Dispatch the resetting of the form
-  }
+    axios
+      .post("http://localhost:9000/api/quiz/new", quiz)
+      .then((response) => {
+        const successMessage = `Congrats: "${response.data.question}" is a great question!`;
+
+        dispatch({
+          type: actionTypes.SET_INFO_MESSAGE,
+          payload: successMessage,
+        });
+
+        dispatch({ type: actionTypes.RESET_FORM });
+      })
+      .catch((error) => {
+        const errorMessage =
+          error.response && error.response.data.message
+            ? error.response.data.message
+            : error.message;
+
+        dispatch({
+          type: actionTypes.SET_INFO_MESSAGE,
+          payload: errorMessage,
+        });
+      });
+  };
 }
+
 // ❗ On promise rejections, use log statements or breakpoints, and put an appropriate error message in state
